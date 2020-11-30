@@ -1,0 +1,59 @@
+version: "3"
+services:
+  matomo:
+    image: matomo:3
+    restart: always
+    # ports:
+    #   - 8080:80
+    volumes:
+      - matomo:/var/www/html
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.matomo.rule=Host(`matomo.docker.localhost`)" # Change me to your host name / domain name
+      - "traefik.http.routers.matomo.entrypoints=web"
+      # - "traefik.http.routers.matomo.tls.certresolver=secure"
+
+  db:
+    image: mariadb:10.5.8
+    restart: always
+    volumes:
+      - data:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+
+  traefik:
+    image: traefik
+    container_name: traefik
+    restart: always
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - "letsencrypt:/letsencrypt"
+      - "/var/run/docker.sock:/var/run/docker.sock:ro" # Consider using secure TLS
+    command:
+      # - "--log.level=ERROR" # For debugging only
+      # - "--api.insecure=true" # Do not enable in production
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      # - "--providers.docker.endpoint=tcp://127.0.0.1:2376" # Production configuration https://docs.docker.com/engine/security/https/#create-a-ca-server-and-client-keys-with-openssl
+      # - "--providers.docker.tls.ca=/ca.pem"
+      # - "--providers.docker.tls.cert=/cert.pem"
+      # - "--providers.docker.tls.key=/key.pem"
+      # - "--certificatesresolvers.secure.acme.httpchallenge=true" # Use this OR dnschallenge not both
+      # - "--certificatesresolvers.secure.acme.httpchallenge.entrypoint=web"
+      # - "--certificatesresolvers.secure.acme.dnschallenge=true"
+      # - "--certificatesresolvers.secure.acme.dnschallenge.provider=cloudflare"
+      - "--certificatesresolvers.secure.acme.email=" # Optional
+      - "--certificatesresolvers.secure.acme.storage=/letsencrypt/acme.json"
+      # - "--certificatesresolvers.secure.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory" # Use staging while developing
+
+volumes:
+  data:
+  letsencrypt:
+  matomo:
